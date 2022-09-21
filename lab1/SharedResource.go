@@ -5,9 +5,9 @@ func main() {
 	CheckError(err)
 	defer Connection.Close()
 	for {
-		//Loop infinito para receber mensagem e escrever todo
-		//conteúdo (processo que enviou, relógio recebido e texto)
+		//Loop infinito para receber mensagem e escrever todos os
+		//conteúdos (processo que enviou, relógio recebido e texto)
 		//na tela
-		//FALTA FAZER
+		//TODO: Completar essa parte
 	}
 }
