@@ -40,6 +40,12 @@ func PrintError(err error) {
 		fmt.Println("Erro: ", err)
 	}
 }
+func pushReplyQueue(pj_id int, lc_pj int) {
+	// TODO: preencher essa função
+}
+func sendReply(pj_id int, lc_pj int) {
+	// TODO: preencher essa função
+}
 func doServerJob() { //Loop infinito mesmo
 	for {
 		//Ler (uma vez somente) da conexão UDP a mensagem
@@ -53,7 +59,31 @@ func doServerJob() { //Loop infinito mesmo
 		str_pj_id := msg_parse[0]
 		str_pj_lc := msg_parse[1]
 		str_pj_content := msg_parse[1]
+		pj_id, err := strconv.Atoi(str_pj_id)
+		lc_pj, err := strconv.Atoi(str_pj_lc)
 		//TODO: Preencher essa função
+		if str_pj_id != string(id) {
+			// caso mensagem venha de outro processo
+			if str_pj_content == "reply" {
+				// caso mensagem seja de reply
+
+			} else if str_pj_content == "request" {
+				// recebido o request
+				// Caso esteja Held || Wanted com menor prioridade:
+				if estou_na_cs || (estou_esperando && amIPriority(pj_id, lc_pj)) {
+					//devo colocar oprocesso na fila de prioridade
+					pushReplyQueue(pj_id, lc_pj)
+				} else {
+					// Caso contrario: enviar reply
+					sendReply(pj_id, lc_pj)
+				}
+			} else {
+				fmt.Println("Mensagem não identificada: %s \n", str_pj_content)
+			}
+
+		} else {
+			// caso mensagem tenha id igual ao meu id
+		}
 
 		fmt.Println("Received ", msg, " from ", addr)
 		if err != nil {
