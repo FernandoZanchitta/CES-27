@@ -134,7 +134,8 @@ func useCS(logical_clock_req int, text_mensagem string) {
 	// formatando a mensagem
 	lc_msg := strconv.Itoa(logical_clock_req)
 	id_msg := strconv.Itoa(id)
-	msg := id_msg + "," + lc_msg + "," + text_msg
+	msg := id_msg + "," + lc_msg + "," + text_mensagem
+	buf := []byte(msg)
 	// enviar mensagem para o shared_resource
 	_, err := shared_resource.Write(buf)
 	PrintError(err)
@@ -142,8 +143,17 @@ func useCS(logical_clock_req int, text_mensagem string) {
 	time.Sleep(time.Second * 2)
 }
 func replyAnyQueuedRequest() {
-	//TODO: Preencher função
-
+	text_mensagem := "reply"
+	id_msg := strconv.Itoa(id)
+	lc_msg := strconv.Itoa(my_logical_clock)
+	msg := id_msg + "," + lc_msg + "," + text_mensagem
+	buf := []byte(msg)
+	for _, pjid := range replied_received {
+		// dentro do replied_received contem todos os process_id de cada um dos que pediram acesso
+		index := pjid - 1
+		_, err := CliConn[index].Write(buf)
+		PrintError(err)
+	}
 }
 func exitCS() {
 	estou_esperando = false
