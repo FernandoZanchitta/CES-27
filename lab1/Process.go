@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -47,26 +48,16 @@ func doServerJob() { //Loop infinito mesmo
 		//FALTA ALGO AQUI
 		buf := make([]byte, 1024)
 		n, addr, err := ServConn.ReadFromUDP(buf)
-		msg = string(buf[0:n])
-		fmt.Println("Received ", string(buf[0:n]), " from ", addr)
+		msg := string(buf[0:n])
+		msg_parse := strings.Split(msg, ",")
+		str_pj_id := msg_parse[0]
+		str_pj_lc := msg_parse[1]
+		str_pj_content := msg_parse[1]
+		//TODO: Preencher essa função
+		fmt.Println("Received ", msg, " from ", addr)
 		if err != nil {
 			fmt.Println("Error: ", err)
 		}
-	}
-}
-func doClientJob(otherProcess int, i int) {
-	//Enviar uma mensagem (com valor i) para o servidor do processo //otherServer.
-
-	// Ler (uma vez somente) da conexão UDP a mensagem
-	// Escrever na tela a msg recebida (indicando o
-	// endereço de quem enviou)
-	// FALTA ALGO AQUI
-	msg := strconv.Itoa(i)
-	buf := []byte(msg)
-	_, err := CliConn[otherProcess].Write(buf)
-	// FALTA ALGO AQUI
-	if err != nil {
-		fmt.Println(msg, err)
 	}
 }
 
@@ -91,16 +82,17 @@ func initConnections() {
 		CheckError(err)
 	}
 	ServerAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:10001")
-	CheckError(err)
+	PrintError(err)
 	LocalAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
-	CheckError(err)
+	PrintError(err)
 	shared_resource, err = net.DialUDP("udp", LocalAddr, ServerAddr)
-	CheckError(err)
+	PrintError(err)
 	ServConn, err = net.ListenUDP("udp", ServerAddr)
-	CheckError(err)
+	PrintError(err)
 	// iniciando o clock logico do processo
 	my_logical_clock = 0
 }
+
 func readInput(ch chan string) {
 	// Rotina que "escuta" o stdin
 	reader := bufio.NewReader(os.Stdin)
@@ -110,33 +102,67 @@ func readInput(ch chan string) {
 	}
 }
 
-func request_CS() {
+func sendMsg(other_process int, msg string) {
+	//Enviar uma mensagem (com valor i) para o servidor do processo //otherServer.x
+	buf := []byte(msg)
+	_, err := CliConn[other_process].Write(buf)
+	// FALTA ALGO AQUI
+	PrintError(err)
+}
+
+func requestCS(logical_clock_req int) {
+	// devo mandar mensagem de request a todos os outros
+	//processos, com o conteudo da mensagem: id,lc,request
+
+	// formatando a mensagem que vai ser enviada
+	text_msg := "request"
+	id_msg := strconv.Itoa(id)
+	lc_msg := strconv.Itoa(logical_clock_req)
+	msg := id_msg + "," + lc_msg + "," + text_msg
+	for other_process := 1; other_process <= nServers; other_process++ {
+		if other_process != id {
+			sendMsg(other_process, msg)
+		}
+	}
+	// enviar mensagem para todos os processos existentes
 
 }
-func use_CS() {
+func useCS(logical_clock_req int, text_mensagem string) {
+	// setando flag de HELD
+	estou_na_cs = true
+
+	// formatando a mensagem
+	lc_msg := strconv.Itoa(logical_clock_req)
+	id_msg := strconv.Itoa(id)
+	msg := id_msg + "," + lc_msg + "," + text_msg
+	// enviar mensagem para o shared_resource
+	_, err := shared_resource.Write(buf)
+	PrintError(err)
+	//esperar
+	time.Sleep(time.Second * 2)
+}
+func replyAnyQueuedRequest() {
+	//TODO: Preencher função
 
 }
-func reply_any_queued_request() {
-
-}
-func exit_CS() {
+func exitCS() {
 	estou_esperando = false
 	estou_na_cs = false
 	received_all_replies = false
-	reply_any_queued_request()
+	replyAnyQueuedRequest()
 	replied_received = nil
 
 }
 func Ricart_Agrawala(logical_clock_req int, text_mensagem string) {
 	estou_esperando = true
-	request_CS(logical_clock_req)
+	requestCS(logical_clock_req)
 	fmt.Println("Estou esperando receber os replies\n ")
 	for !received_all_replies {
 	}
 	fmt.Println("Entrei na CS!")
-	use_CS(logical_clock_req, text_mensagem)
+	useCS(logical_clock_req, text_mensagem)
 	fmt.Println("Sai da CS!")
-	exit_CS()
+	exitCS()
 	fmt.Println("Liberei a CS!")
 }
 
@@ -161,13 +187,13 @@ func main() {
 		select {
 		case x, valid := <-ch:
 			if valid {
-				compare, _ = strconv.Atoi(x)
+				compare, _ := strconv.Atoi(x)
 				if compare != id && x == "x" {
 					if estou_na_cs || estou_esperando {
 						fmt.Println("x ignorado\n")
 					} else {
 						fmt.Println("Solicitando acesso a CS com ID = %d e Logical Clock = %d\n", id, my_logical_clock)
-						text_mensagem = "TEXTO TESTE MENSAGEM"
+						text_mensagem := "TEXTO TESTE MENSAGEM"
 						lc_requisicao = my_logical_clock
 						go Ricart_Agrawala(lc_requisicao, text_mensagem)
 					}

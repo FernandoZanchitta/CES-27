@@ -8,6 +8,6 @@ func main() {
 		//Loop infinito para receber mensagem e escrever todos os
 		//conteúdos (processo que enviou, relógio recebido e texto)
 		//na tela
-		//TODO: Completar essa parte
+		//TODO: Preencher essa função
 	}
 }
