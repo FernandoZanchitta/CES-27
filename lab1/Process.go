@@ -54,6 +54,7 @@ func doServerJob() { //Loop infinito mesmo
 		str_pj_lc := msg_parse[1]
 		str_pj_content := msg_parse[1]
 		//TODO: Preencher essa função
+
 		fmt.Println("Received ", msg, " from ", addr)
 		if err != nil {
 			fmt.Println("Error: ", err)
