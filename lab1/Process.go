@@ -40,11 +40,45 @@ func PrintError(err error) {
 		fmt.Println("Erro: ", err)
 	}
 }
-func pushReplyQueue(pj_id int, lc_pj int) {
-	// TODO: preencher essa função
+func pushReplyQueue(pj_id int) {
+	queued_request = append(queued_request, pj_id)
 }
 func sendReply(pj_id int, lc_pj int) {
-	// TODO: preencher essa função
+	// preciso mandar mensagem para o outro processo
+	// conteudo da mensagem: id my_logical_clock reply
+	msg := strconv.Itoa(id) + "," + strconv.Itoa(my_logical_clock) + "," + "reply"
+	sendMsg(pj_id, msg)
+
+}
+func amIPriority(pj_id int, pj_lc int) bool {
+	// criterios: para um clock menor > Mesmo clock: id menor > resto
+	if my_logical_clock < pj_lc {
+		return true
+	} else if my_logical_clock == pj_lc {
+		if id < pj_id { // todo: verificar se tem problema de igualdade, ou se pode deixar
+			return true
+		} else {
+			return false
+		}
+	} else {
+		return false
+	}
+}
+func receiveReply(pj_id int) {
+	//todo: revisar essa funcao
+	//devemos verificar se a mensagem de reply ja se encontra na lista
+	is_new := true
+	for _, content := range replied_received {
+		if pj_id == content {
+			is_new = false
+		}
+	}
+	if is_new {
+		replied_received = append(replied_received, pj_id)
+	}
+	if len(replied_received) >= nServers { // todo: verificar se não é nServer - 1
+		received_all_replies = true
+	}
 }
 func doServerJob() { //Loop infinito mesmo
 	for {
@@ -66,13 +100,14 @@ func doServerJob() { //Loop infinito mesmo
 			// caso mensagem venha de outro processo
 			if str_pj_content == "reply" {
 				// caso mensagem seja de reply
+				receiveReply(pj_id)
 
 			} else if str_pj_content == "request" {
 				// recebido o request
 				// Caso esteja Held || Wanted com menor prioridade:
 				if estou_na_cs || (estou_esperando && amIPriority(pj_id, lc_pj)) {
 					//devo colocar oprocesso na fila de prioridade
-					pushReplyQueue(pj_id, lc_pj)
+					pushReplyQueue(pj_id)
 				} else {
 					// Caso contrario: enviar reply
 					sendReply(pj_id, lc_pj)
@@ -136,7 +171,7 @@ func readInput(ch chan string) {
 func sendMsg(other_process int, msg string) {
 	//Enviar uma mensagem (com valor i) para o servidor do processo //otherServer.x
 	buf := []byte(msg)
-	_, err := CliConn[other_process].Write(buf)
+	_, err := CliConn[other_process-1].Write(buf)
 	// FALTA ALGO AQUI
 	PrintError(err)
 }

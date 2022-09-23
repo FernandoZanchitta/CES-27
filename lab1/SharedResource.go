@@ -3,17 +3,10 @@ package main
 import (
 	"fmt"
 	"net"
-	"os"
 	"strings"
 	"time"
 )
 
-func CheckError(err error) {
-	if err != nil {
-		fmt.Println("Erro: ", err)
-		os.Exit(0)
-	}
-}
 func main() {
 	Address, err := net.ResolveUDPAddr("udp", ":10001")
 	CheckError(err)
