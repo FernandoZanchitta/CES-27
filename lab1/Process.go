@@ -35,6 +35,13 @@ func CheckError(err error) {
 		os.Exit(0)
 	}
 }
+func MaxInt(a int, b int) int {
+	if a >= b {
+		return a
+	} else {
+		return b
+	}
+}
 func PrintError(err error) {
 	if err != nil {
 		fmt.Println("Erro: ", err)
@@ -113,12 +120,15 @@ func doServerJob() { //Loop infinito mesmo
 					sendReply(pj_id, lc_pj)
 				}
 			} else {
-				fmt.Println("Mensagem não identificada: %s \n", str_pj_content)
+				fmt.Println("Mensagem não identificada: ", str_pj_content)
 			}
 
 		} else {
-			// caso mensagem tenha id igual ao meu id
+			//caso mensagem tenha id igual ao meu id
+			fmt.Println("Mensagem recebida com mesmo id ")
 		}
+		my_logical_clock = MaxInt(my_logical_clock, lc_pj) + 1
+		fmt.Println("Atualizei meu relogio para ", my_logical_clock)
 
 		fmt.Println("Received ", msg, " from ", addr)
 		if err != nil {
@@ -268,14 +278,18 @@ func main() {
 					if estou_na_cs || estou_esperando {
 						fmt.Println("x ignorado\n")
 					} else {
-						fmt.Println("Solicitando acesso a CS com ID = %d e Logical Clock = %d\n", id, my_logical_clock)
+						fmt.Println("Solicitando acesso a CS com ID = ", id, " e Logical Clock = ", my_logical_clock)
 						text_mensagem := "TEXTO TESTE MENSAGEM"
+						// vou enviar mensagem de request agora, portanto vou adicionar o clock:
+						//todo: estou adicionando o clock do request aqui, verificar se esta ok
+						my_logical_clock++
 						lc_requisicao = my_logical_clock
 						go Ricart_Agrawala(lc_requisicao, text_mensagem)
 					}
 				}
-			} else {
-				fmt.Println("Canal fechado!")
+			} else if x == strconv.Itoa(id) {
+				my_logical_clock++
+				fmt.Println("recebido id -> ação interna -> incrementando clock para ", my_logical_clock)
 			}
 		default:
 			// Fazer nada!
