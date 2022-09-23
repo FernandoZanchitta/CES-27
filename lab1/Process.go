@@ -224,7 +224,7 @@ func useCS(logical_clock_req int, text_mensagem string) {
 	_, err := ServConn.Write(buf)
 	PrintError(err)
 	//esperar
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Second * 10)
 }
 func replyAnyQueuedRequest() {
 	text_mensagem := "reply"
