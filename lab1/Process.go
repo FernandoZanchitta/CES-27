@@ -83,7 +83,7 @@ func receiveReply(pj_id int) {
 	if is_new {
 		replied_received = append(replied_received, pj_id)
 	}
-	if len(replied_received) >= nServers { // todo: verificar se não é nServer - 1
+	if len(replied_received) >= nServers - 1 { // todo: verificar se não é nServer - 1
 		received_all_replies = true
 	}
 }
@@ -93,24 +93,19 @@ func doServerJob() { //Loop infinito mesmo
 		//Escrever na tela a msg recebida (indicando o
 		//endereço de quem enviou)
 		//FALTA ALGO AQUI
-		fmt.Println("\nrecebi a requisição")
 		buf := make([]byte, 1024)
-		fmt.Println("\nrecebi a requisição -1")
-		n, addr, err := ServConn.ReadFromUDP(buf)
+		n, addr, err := CliConn[id-1].ReadFromUDP(buf)
 		CheckError(err)
-		fmt.Println("\nrecebi a requisição 0")
 		msg := string(buf[0:n])
 		msg_parse := strings.Split(msg, ",")
 		str_pj_id := msg_parse[0]
 		str_pj_lc := msg_parse[1]
-		str_pj_content := msg_parse[1]
+		str_pj_content := msg_parse[2]
 		pj_id, err := strconv.Atoi(str_pj_id)
 		lc_pj, err := strconv.Atoi(str_pj_lc)
-		fmt.Println("\nrecebi a requisição 1")
 		//TODO: Preencher essa função
 		if str_pj_id != string(id) {
 			// caso mensagem venha de outro processo
-			fmt.Println("\nrecebi a requisição 2")
 			if str_pj_content == "reply" {
 				// caso mensagem seja de reply
 				receiveReply(pj_id)
@@ -133,7 +128,6 @@ func doServerJob() { //Loop infinito mesmo
 			//caso mensagem tenha id igual ao meu id
 			fmt.Println("Mensagem recebida com mesmo id ")
 		}
-		fmt.Println("\nrecebi a requisição 3")
 		my_logical_clock = MaxInt(my_logical_clock, lc_pj) + 1 // receber um request, atualiza relogio logico
 		fmt.Println("Atualizei meu relogio para ", my_logical_clock)
 
@@ -160,9 +154,15 @@ func initConnections() {
 		CheckError(err)
 		// LocalAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
 		// CheckError(err)
-		Conn, err := net.DialUDP("udp", nil, ServerAddr)
-		CliConn[servidores] = Conn
-		CheckError(err)
+		if servidores== (id-1){
+			Conn, err := net.ListenUDP("udp", ServerAddr)
+			CliConn[servidores] = Conn
+			CheckError(err)
+		}else{
+			Conn, err := net.DialUDP("udp", nil, ServerAddr)
+			CliConn[servidores] = Conn
+			CheckError(err)
+		}
 	}
 	ServerAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:10001")
 	PrintError(err)
@@ -187,9 +187,9 @@ func readInput(ch chan string) {
 
 func sendMsg(other_process int, msg string) {
 	//Enviar uma mensagem (com valor i) para o servidor do processo //otherServer.x
-	fmt.Println("\nenviando mensagem, ", other_process)
 	buf := []byte(msg)
 	_, err := CliConn[other_process-1].Write(buf)
+	fmt.Println("mensagem enviada")
 	// FALTA ALGO AQUI
 	PrintError(err)
 }
@@ -279,11 +279,8 @@ func main() {
 		//stdin (input do terminal)
 		select {
 			case x, valid := <-ch:
-				fmt.Println("dentro do case")
 				if valid {
-					fmt.Println("valido")
 					if x == "x" {
-						fmt.Println("comparando")
 						if estou_na_cs || estou_esperando {
 							fmt.Println("x ignorado\n")
 						} else {
