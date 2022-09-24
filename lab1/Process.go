@@ -56,7 +56,7 @@ func sendReply(pj_id int, lc_pj int) {
 	// preciso mandar mensagem para o outro processo
 	// conteudo da mensagem: id my_logical_clock reply
 	msg := strconv.Itoa(id) + "," + strconv.Itoa(my_logical_clock) + "," + "reply"
-	fmt.Println("enviando Reply para ", pj_id)
+	fmt.Println("enviando Reply para Processo:", pj_id)
 	sendMsg(pj_id, msg)
 
 }
@@ -201,7 +201,7 @@ func sendMsg(other_process int, msg string) {
 	//Enviar uma mensagem (com valor i) para o servidor do processo //otherServer.x
 	buf := []byte(msg)
 	_, err := CliConn[other_process-1].Write(buf)
-	fmt.Println("mensagem enviada: ", msg, " para ", other_process)
+	fmt.Println("mensagem enviada: ", msg, " para Processo:", other_process)
 	// FALTA ALGO AQUI
 	PrintError(err)
 }
@@ -314,7 +314,6 @@ func main() {
 						text_mensagem := "TEXTO TESTE MENSAGEM"
 						// vou enviar mensagem de request agora, portanto vou adicionar o clock:
 						//todo: estou adicionando o clock do request aqui, verificar se esta ok
-						fmt.Println("Solicitando acesso a CS com ID = ", id, " e Logical Clock = ", my_logical_clock)
 
 						lc_requisicao = my_logical_clock
 						go Ricart_Agrawala(lc_requisicao, text_mensagem)
