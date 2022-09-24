@@ -1,9 +1,9 @@
 package main
 
 import (
-	"os"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"time"
 )
@@ -29,7 +29,7 @@ func main() {
 		n, _, err := Connection.ReadFromUDP(buf)
 		msg := string(buf[0:n])
 		msg_parser := strings.Split(msg, ",")
-		fmt.Println("Received message....\n from ID: %s\n with Logical Clock: %s\n BODY:%s", msg_parser[0], msg_parser[1], msg_parser[2])
+		fmt.Println("Received message....\n from ID:", msg_parser[0], "\nwith Logical Clock:", msg_parser[1], "\nBODY: ", msg_parser[2])
 		CheckError(err)
 
 	}

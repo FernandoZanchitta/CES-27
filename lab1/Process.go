@@ -54,6 +54,7 @@ func sendReply(pj_id int, lc_pj int) {
 	// preciso mandar mensagem para o outro processo
 	// conteudo da mensagem: id my_logical_clock reply
 	msg := strconv.Itoa(id) + "," + strconv.Itoa(my_logical_clock) + "," + "reply"
+	fmt.Println("enviando Reply para ", pj_id)
 	sendMsg(pj_id, msg)
 
 }
@@ -83,7 +84,7 @@ func receiveReply(pj_id int) {
 	if is_new {
 		replied_received = append(replied_received, pj_id)
 	}
-	if len(replied_received) >= nServers - 1 { // todo: verificar se não é nServer - 1
+	if len(replied_received) >= nServers-1 { // todo: verificar se não é nServer - 1
 		received_all_replies = true
 	}
 }
@@ -108,11 +109,15 @@ func doServerJob() { //Loop infinito mesmo
 			// caso mensagem venha de outro processo
 			if str_pj_content == "reply" {
 				// caso mensagem seja de reply
+				my_logical_clock = MaxInt(my_logical_clock, lc_pj) + 1 // receber um request, atualiza relogio logico
+				fmt.Println("Atualizei meu relogio para ", my_logical_clock)
 				receiveReply(pj_id)
 
 			} else if str_pj_content == "request" {
 				// recebido o request
 				// Caso esteja Held || Wanted com menor prioridade:
+				my_logical_clock = MaxInt(my_logical_clock, lc_pj) + 1 // receber um request, atualiza relogio logico
+				fmt.Println("Atualizei meu relogio para ", my_logical_clock)
 				if estou_na_cs || (estou_esperando && amIPriority(pj_id, lc_pj)) {
 					//devo colocar oprocesso na fila de prioridade
 					pushReplyQueue(pj_id)
@@ -128,8 +133,6 @@ func doServerJob() { //Loop infinito mesmo
 			//caso mensagem tenha id igual ao meu id
 			fmt.Println("Mensagem recebida com mesmo id ")
 		}
-		my_logical_clock = MaxInt(my_logical_clock, lc_pj) + 1 // receber um request, atualiza relogio logico
-		fmt.Println("Atualizei meu relogio para ", my_logical_clock)
 
 		fmt.Println("Received ", msg, " from ", addr)
 		if err != nil {
@@ -154,11 +157,11 @@ func initConnections() {
 		CheckError(err)
 		// LocalAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
 		// CheckError(err)
-		if servidores== (id-1){
+		if servidores == (id - 1) {
 			Conn, err := net.ListenUDP("udp", ServerAddr)
 			CliConn[servidores] = Conn
 			CheckError(err)
-		}else{
+		} else {
 			Conn, err := net.DialUDP("udp", nil, ServerAddr)
 			CliConn[servidores] = Conn
 			CheckError(err)
@@ -232,7 +235,11 @@ func replyAnyQueuedRequest() {
 	lc_msg := strconv.Itoa(my_logical_clock)
 	msg := id_msg + "," + lc_msg + "," + text_mensagem
 	buf := []byte(msg)
-	for _, pjid := range replied_received {
+	fmt.Println("Enviando reply para quem está na lista")
+	if len(queued_request) != 0 {
+		print("TEM ELEMENTOS NA FILA DE REQUEST")
+	}
+	for _, pjid := range queued_request {
 		// dentro do replied_received contem todos os process_id de cada um dos que pediram acesso
 		index := pjid - 1
 		_, err := CliConn[index].Write(buf)
@@ -240,6 +247,7 @@ func replyAnyQueuedRequest() {
 	}
 }
 func exitCS() {
+	fmt.Println("Estou em RELEASED")
 	estou_esperando = false
 	estou_na_cs = false
 	received_all_replies = false
@@ -267,7 +275,7 @@ func main() {
 	estou_esperando = false
 	//O fechamento de conexões deve ficar aqui, assim só fecha //conexão quando a main morrer
 	defer ServConn.Close()
-	for i := 0; i < nServers; i++ {// todo: verificar se não é nServer - 1
+	for i := 0; i < nServers; i++ { // todo: verificar se não é nServer - 1
 		defer CliConn[i].Close()
 	}
 	/*Todos Process fará a mesma coisa: ficar ouvindo mensagens e man- dar infinitos i’s para os outros processos*/
@@ -278,29 +286,31 @@ func main() {
 		//Verificar (de forma nao bloqueante ) se tem algo no
 		//stdin (input do terminal)
 		select {
-			case x, valid := <-ch:
-				if valid {
-					if x == "x" {
-						if estou_na_cs || estou_esperando {
-							fmt.Println("x ignorado\n")
-						} else {
-							fmt.Println("Solicitando acesso a CS com ID = ", id, " e Logical Clock = ", my_logical_clock)
-							text_mensagem := "TEXTO TESTE MENSAGEM"
-							// vou enviar mensagem de request agora, portanto vou adicionar o clock:
-							//todo: estou adicionando o clock do request aqui, verificar se esta ok
-							my_logical_clock++ // adicionar clock ao enviar requests
-							lc_requisicao = my_logical_clock
-							go Ricart_Agrawala(lc_requisicao, text_mensagem)
-						}
-					} else if x == strconv.Itoa(id) {
-						my_logical_clock++
-						fmt.Println("recebido id -> ação interna -> incrementando clock para ", my_logical_clock)
+		case x, valid := <-ch:
+			if valid {
+				if x == "x" {
+					if estou_na_cs || estou_esperando {
+						fmt.Println("x ignorado\n")
+					} else {
+						my_logical_clock++ // adicionar clock ao enviar requests
+						fmt.Println("Solicitando acesso a CS com ID = ", id, " e Logical Clock = ", my_logical_clock)
+						text_mensagem := "TEXTO TESTE MENSAGEM"
+						// vou enviar mensagem de request agora, portanto vou adicionar o clock:
+						//todo: estou adicionando o clock do request aqui, verificar se esta ok
+						fmt.Println("Solicitando acesso a CS com ID = ", id, " e Logical Clock = ", my_logical_clock)
+
+						lc_requisicao = my_logical_clock
+						go Ricart_Agrawala(lc_requisicao, text_mensagem)
 					}
+				} else if x == strconv.Itoa(id) {
+					my_logical_clock++
+					fmt.Println("recebido id -> ação interna -> incrementando clock para ", my_logical_clock)
 				}
-			default:
-				// Fazer nada!
-				// Mas não fica bloqueado esperando o teclado
-				time.Sleep(time.Second * 1)
+			}
+		default:
+			// Fazer nada!
+			// Mas não fica bloqueado esperando o teclado
+			time.Sleep(time.Second * 1)
 		}
 		//Esperar um pouco
 		time.Sleep(time.Second * 1)
