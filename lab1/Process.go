@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -28,6 +29,7 @@ var shared_resource *net.UDPConn
 var queued_request []int
 var lc_requisicao int
 var replied_received []int
+var m sync.Mutex
 
 func CheckError(err error) {
 	if err != nil {
@@ -107,24 +109,32 @@ func doServerJob() { //Loop infinito mesmo
 		//TODO: Preencher essa função
 		if str_pj_id != string(id) {
 			// caso mensagem venha de outro processo
+			fmt.Println("Received ", msg, " from ", addr)
 			if str_pj_content == "reply" {
 				// caso mensagem seja de reply
+				m.Lock()
+				receiveReply(pj_id)
+				m.Unlock()
 				my_logical_clock = MaxInt(my_logical_clock, lc_pj) + 1 // receber um request, atualiza relogio logico
 				fmt.Println("Atualizei meu relogio para ", my_logical_clock)
-				receiveReply(pj_id)
 
 			} else if str_pj_content == "request" {
 				// recebido o request
 				// Caso esteja Held || Wanted com menor prioridade:
-				my_logical_clock = MaxInt(my_logical_clock, lc_pj) + 1 // receber um request, atualiza relogio logico
-				fmt.Println("Atualizei meu relogio para ", my_logical_clock)
+				time.Sleep(2 * time.Second)
 				if estou_na_cs || (estou_esperando && amIPriority(pj_id, lc_pj)) {
 					//devo colocar oprocesso na fila de prioridade
+					fmt.Printf("\nEnfileirei %d com relogio %d, pois estouNaCS = %t, estouEsperando = %t, meu ID = %d,meu relogio = %d \n", pj_id, lc_pj, estou_na_cs, estou_esperando, id, my_logical_clock)
 					pushReplyQueue(pj_id)
+					my_logical_clock = MaxInt(my_logical_clock, lc_pj) + 1 // receber um request, atualiza relogio logico
+					fmt.Println("Atualizei meu relogio para ", my_logical_clock)
 				} else {
 					// Caso contrario: enviar reply
+					my_logical_clock = MaxInt(my_logical_clock, lc_pj) + 1 // receber um request, atualiza relogio logico
+					fmt.Println("Atualizei meu relogio para ", my_logical_clock)
 					sendReply(pj_id, lc_pj)
 				}
+
 			} else {
 				fmt.Println("Mensagem não identificada: ", str_pj_content)
 			}
@@ -134,7 +144,6 @@ func doServerJob() { //Loop infinito mesmo
 			fmt.Println("Mensagem recebida com mesmo id ")
 		}
 
-		fmt.Println("Received ", msg, " from ", addr)
 		if err != nil {
 			fmt.Println("Error: ", err)
 		}
@@ -192,7 +201,7 @@ func sendMsg(other_process int, msg string) {
 	//Enviar uma mensagem (com valor i) para o servidor do processo //otherServer.x
 	buf := []byte(msg)
 	_, err := CliConn[other_process-1].Write(buf)
-	fmt.Println("mensagem enviada")
+	fmt.Println("mensagem enviada: ", msg, " para ", other_process)
 	// FALTA ALGO AQUI
 	PrintError(err)
 }
@@ -224,6 +233,7 @@ func useCS(logical_clock_req int, text_mensagem string) {
 	msg := id_msg + "," + lc_msg + "," + text_mensagem
 	buf := []byte(msg)
 	// enviar mensagem para o shared_resource
+	fmt.Println("Enviando mensagem ao SHARED_RESOURCE")
 	_, err := ServConn.Write(buf)
 	PrintError(err)
 	//esperar
@@ -237,11 +247,12 @@ func replyAnyQueuedRequest() {
 	buf := []byte(msg)
 	fmt.Println("Enviando reply para quem está na lista")
 	if len(queued_request) != 0 {
-		print("TEM ELEMENTOS NA FILA DE REQUEST")
+		fmt.Println("TEM ELEMENTOS NA FILA DE REQUEST!")
 	}
 	for _, pjid := range queued_request {
 		// dentro do replied_received contem todos os process_id de cada um dos que pediram acesso
 		index := pjid - 1
+		fmt.Println("Enviando REPLY para processo: ", pjid)
 		_, err := CliConn[index].Write(buf)
 		PrintError(err)
 	}
@@ -259,13 +270,19 @@ func Ricart_Agrawala(logical_clock_req int, text_mensagem string) {
 	estou_esperando = true
 	requestCS(logical_clock_req)
 	fmt.Println("Estou esperando receber os replies\n ")
-	for !received_all_replies {
+	for {
+		m.Lock()
+		if received_all_replies {
+			break
+		}
+		m.Unlock()
 	}
-	fmt.Println("Entrei na CS!")
+	m.Unlock()
+	fmt.Println("\n\nEntrei na CS!")
 	useCS(logical_clock_req, text_mensagem)
-	fmt.Println("Sai da CS!")
+	fmt.Println("\nSai da CS!")
 	exitCS()
-	fmt.Println("Liberei a CS!")
+	fmt.Println("Liberei a CS!\n\n")
 }
 
 // ESSA FUNÇÃO ESTÁ PRONTA
@@ -305,6 +322,8 @@ func main() {
 				} else if x == strconv.Itoa(id) {
 					my_logical_clock++
 					fmt.Println("recebido id -> ação interna -> incrementando clock para ", my_logical_clock)
+				} else {
+					fmt.Println("Mensagem não identificada :::: Não fazer nada")
 				}
 			}
 		default:
