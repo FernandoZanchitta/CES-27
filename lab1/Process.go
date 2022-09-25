@@ -44,6 +44,11 @@ func MaxInt(a int, b int) int {
 		return b
 	}
 }
+func incrementClock() {
+	m.Lock()
+	my_logical_clock++
+	m.Unlock()
+}
 func PrintError(err error) {
 	if err != nil {
 		fmt.Println("Erro: ", err)
@@ -114,9 +119,9 @@ func doServerJob() { //Loop infinito mesmo
 				// caso mensagem seja de reply
 				m.Lock()
 				receiveReply(pj_id)
-				m.Unlock()
 				my_logical_clock = MaxInt(my_logical_clock, lc_pj) + 1 // receber um request, atualiza relogio logico
 				fmt.Println("Atualizei meu relogio para ", my_logical_clock)
+				m.Unlock()
 
 			} else if str_pj_content == "request" {
 				// recebido o request
@@ -126,13 +131,17 @@ func doServerJob() { //Loop infinito mesmo
 					//devo colocar oprocesso na fila de prioridade
 					fmt.Printf("\nEnfileirei %d com relogio %d, pois estouNaCS = %t, estouEsperando = %t, meu ID = %d,meu relogio = %d \n", pj_id, lc_pj, estou_na_cs, estou_esperando, id, my_logical_clock)
 					pushReplyQueue(pj_id)
+					m.Lock()
 					my_logical_clock = MaxInt(my_logical_clock, lc_pj) + 1 // receber um request, atualiza relogio logico
 					fmt.Println("Atualizei meu relogio para ", my_logical_clock)
+					m.Unlock()
 				} else {
 					// Caso contrario: enviar reply
+					m.Lock()
 					my_logical_clock = MaxInt(my_logical_clock, lc_pj) + 1 // receber um request, atualiza relogio logico
 					fmt.Println("Atualizei meu relogio para ", my_logical_clock)
 					sendReply(pj_id, lc_pj)
+					m.Unlock()
 				}
 
 			} else {
@@ -228,6 +237,7 @@ func useCS(logical_clock_req int, text_mensagem string) {
 	estou_na_cs = true
 
 	// formatando a mensagem
+	logical_clock_req = my_logical_clock
 	lc_msg := strconv.Itoa(logical_clock_req)
 	id_msg := strconv.Itoa(id)
 	msg := id_msg + "," + lc_msg + "," + text_mensagem
@@ -237,7 +247,7 @@ func useCS(logical_clock_req int, text_mensagem string) {
 	_, err := ServConn.Write(buf)
 	PrintError(err)
 	//esperar
-	time.Sleep(time.Second * 10)
+	time.Sleep(time.Second * 15)
 }
 func replyAnyQueuedRequest() {
 	text_mensagem := "reply"
@@ -309,7 +319,7 @@ func main() {
 					if estou_na_cs || estou_esperando {
 						fmt.Println("x ignorado\n")
 					} else {
-						my_logical_clock++ // adicionar clock ao enviar requests
+						incrementClock() // adicionar clock ao enviar requests
 						fmt.Println("Solicitando acesso a CS com ID = ", id, " e Logical Clock = ", my_logical_clock)
 						text_mensagem := "TEXTO TESTE MENSAGEM"
 						// vou enviar mensagem de request agora, portanto vou adicionar o clock:
