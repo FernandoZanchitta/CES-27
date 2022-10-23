@@ -37,6 +37,7 @@ func mapFunc(input []byte) (result []mapreduce.KeyValue) {
 		//todo: COMPLETAR ESSE CÓDIGO
 		//Basta colocar em result os itens <word,"1">
 		//Lembrando: word em minúsculo!
+		word = strings.ToLower(word)
 		result = append(result, mapreduce.KeyValue{word, "1"})
 
 	}
@@ -85,7 +86,7 @@ func reduceFunc(input []mapreduce.KeyValue) (result []mapreduce.KeyValue) {
 		result = append(result, mapreduce.KeyValue{key, fmt.Sprintf("%d", value)})
 	}
 
-	// fmt.Printf("%v\n", result) //Para ajudar nos testes. Precisa da biblioteca fmt (acima comentada)
+	fmt.Printf("%v\n", result) //Para ajudar nos testes. Precisa da biblioteca fmt (acima comentada)
 
 	return result
 }
