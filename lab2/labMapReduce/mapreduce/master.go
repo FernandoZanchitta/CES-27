@@ -34,6 +34,10 @@ type Master struct {
 	// ADD EXTRA PROPERTIES HERE //
 	///////////////////////////////
 	// Fault Tolerance
+	// Retry Operations
+	retryOperationChan  chan *Operation
+	totalOperations     int
+	completedOperations int
 }
 
 type Operation struct {
@@ -85,12 +89,18 @@ func (master *Master) handleFailingWorkers() {
 	// devemos fazer o que?
 	// 1. quando um worker falha, ele é removido da lista de workers
 	// 2. o worker falho é adicionado a uma lista de workers falhos
-	master.workersMutex.Lock()
+	//printando os workers existentes:
+	//printando os workers falhos:
 	for worker := range master.failedWorkerChan {
-		fmt.Printf("Erro no worker: %v\n", worker.id)
+
+		fmt.Printf("Removing worker %v from master list\n", worker.id)
+		master.workersMutex.Lock()
 		delete(master.workers, worker.id)
+		master.workersMutex.Unlock()
+
 	}
-	master.workersMutex.Unlock()
+
+	return
 }
 
 // Handle a single connection until it's done, then closes it.
